@@ -11,6 +11,7 @@ class NotionComponent:
     def __init__(self, comp_id, comp_type=NotionComponentType.UNKNOWN):
         self.id = comp_id
         self.type = comp_type
+        self.title = ""
         self.children = {}
         self.nb_pages = 0
         self.nb_databases = 0
