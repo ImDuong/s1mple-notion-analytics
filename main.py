@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 import time
 from analytics.naive_analytics import NotionNaiveAnalytics
+from analytics.threading_analytics import NotionThreadingAnalytics
 
 if __name__ == '__main__':
     # init
@@ -11,7 +12,8 @@ if __name__ == '__main__':
     NOTION_TOKEN = os.getenv('NOTION_TOKEN')
     NOTION_WORKER = os.getenv('NOTION_WORKER')
 
-    nna = NotionNaiveAnalytics(NOTION_WORKER, token=NOTION_TOKEN)
+    # nna = NotionNaiveAnalytics(NOTION_WORKER, token=NOTION_TOKEN)
+    nna = NotionThreadingAnalytics(NOTION_WORKER, token=NOTION_TOKEN)
 
     start_time = time.time()
     root_page = nna.analytics(root_page_id)

@@ -8,7 +8,7 @@ class NotionNaiveAnalytics:
         self.token = token
         self.nb_worker_calls = 0
 
-    def worker_call(self, suffix_url):
+    def call_worker(self, suffix_url):
         url = f'{self.worker}{suffix_url}'
         self.nb_worker_calls += 1
         return requests.get(url, headers={'Authorization': f'Bearer {self.token}'}).json()
@@ -18,7 +18,7 @@ class NotionNaiveAnalytics:
             cur_component = NotionComponent(page_id)
 
             # call to notion worker
-            res = self.worker_call(f'/page/{page_id}/')
+            res = self.call_worker(f'/page/{page_id}/')
 
             # parse subpages
             try:
