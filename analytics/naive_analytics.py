@@ -1,5 +1,10 @@
 import requests
 from notion.resource import NotionComponentType, NotionComponent
+from ratelimiter import RateLimiter
+import time
+
+
+MAX_NB_RETRIES = 10
 
 
 class NotionNaiveAnalytics:
@@ -8,10 +13,27 @@ class NotionNaiveAnalytics:
         self.token = token
         self.nb_worker_calls = 0
 
+    @RateLimiter(max_calls=2, period=1)
     def call_worker(self, suffix_url):
         url = f'{self.worker}{suffix_url}'
         self.nb_worker_calls += 1
-        return requests.get(url, headers={'Authorization': f'Bearer {self.token}'}).json()
+
+        response = {}
+        raw_response = ""
+        nb_retries = 0
+        while len(response) == 0 or nb_retries <= MAX_NB_RETRIES:
+            try:
+                raw_response = requests.get(url, headers={'Authorization': f'Bearer {self.token}'})
+                response = raw_response.json()
+                break
+            except Exception as e:
+                print(f"error {e} when calling to {url}")
+                print(f"raw response: {raw_response}")
+
+            nb_retries += 1
+            time.sleep(10)
+
+        return response
 
     def analytics(self, root_page_id):
         def get_page_component(page_id):
@@ -20,6 +42,10 @@ class NotionNaiveAnalytics:
             # call to notion worker
             res = self.call_worker(f'/page/{page_id}/')
 
+            if page_id not in res:
+                print(f"page_id: {page_id}: error: empty response")
+                return cur_component
+
             # parse subpages
             try:
                 if res[page_id]["value"]["type"] != NotionComponentType.PAGE.value:
@@ -27,7 +53,7 @@ class NotionNaiveAnalytics:
 
                 # set page type to current component
                 cur_component.type = NotionComponentType.PAGE
-                cur_component.title = res[page_id]["value"]["properties"]["title"][0][0]
+                # cur_component.title = res[page_id]["value"]["properties"]["title"][0][0]
 
                 if "content" not in res[page_id]["value"]:
                     return cur_component
@@ -37,7 +63,7 @@ class NotionNaiveAnalytics:
                     sub_component = NotionComponent(sub_page_id)
                     if res[sub_page_id]["value"]["type"] == NotionComponentType.PAGE.value:
                         sub_component.type = NotionComponentType.PAGE
-                        sub_component.title = res[sub_page_id]["value"]["properties"]["title"][0][0]
+                        # sub_component.title = res[sub_page_id]["value"]["properties"]["title"][0][0]
 
                         # find sub-components of this sub-component directly to reduce the number of calls
                         # (this method works only when notion worker supports one more layer)
@@ -57,7 +83,8 @@ class NotionNaiveAnalytics:
 
                     cur_component.attach_child(sub_component)
             except Exception as e:
-                print(f"page_id: {page_id}: error: {e}")
+                print(f">>> page_id: {page_id}: error: {e}")
+                print(f"response: {res[page_id]['value']['content']}")
                 return cur_component
 
             return cur_component

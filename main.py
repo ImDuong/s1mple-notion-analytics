@@ -1,19 +1,37 @@
-from dotenv import load_dotenv
+import sys
+
+from dotenv import dotenv_values, load_dotenv
 import os
 import time
 from analytics.naive_analytics import NotionNaiveAnalytics
 from analytics.threading_analytics import NotionThreadingAnalytics
 
-if __name__ == '__main__':
-    # init
-    # root_page is required to have the dash signs.
-    root_page_id = 'f7c1ad03-71b6-43e7-a569-a41f8ac0599b'
-    load_dotenv()
-    NOTION_TOKEN = os.getenv('NOTION_TOKEN')
-    NOTION_WORKER = os.getenv('NOTION_WORKER')
 
-    # nna = NotionNaiveAnalytics(NOTION_WORKER, token=NOTION_TOKEN)
-    nna = NotionThreadingAnalytics(NOTION_WORKER, token=NOTION_TOKEN)
+def init():
+    load_dotenv()
+    run_mode = os.getenv("RUN_MODE")
+
+    if run_mode == "prod":
+        env_file = ".env.prod"
+    elif run_mode == "local":
+        env_file = ".env.local"
+    else:
+        env_file = ".env"
+
+    return {
+        **dotenv_values(env_file)
+    }
+
+
+if __name__ == '__main__':
+    # init config
+    config = init()
+
+    # root_page is required to have the dash signs.
+    root_page_id = 'd584ee7d-5fd9-48a5-9dc4-cf90246b056a'
+
+    nna = NotionNaiveAnalytics(config["NOTION_WORKER"], token=config["NOTION_TOKEN"])
+    # nna = NotionThreadingAnalytics(config["NOTION_WORKER"], token=config["NOTION_TOKEN"])
 
     start_time = time.time()
     root_page = nna.analytics(root_page_id)
